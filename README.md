@@ -144,4 +144,4 @@ Using 25 reference samples at distances of 0.024–0.029 from the target:
 
 ## License
 
-MIT — use freely, modify freely, attribute if you're kind.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
