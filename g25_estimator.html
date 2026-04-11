@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G25 Coordinate Estimator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap');
+
+  :root {
+    --bg: #0c0e12;
+    --surface: #14171e;
+    --surface2: #1a1e28;
+    --border: #2a2f3d;
+    --border-hi: #3d4459;
+    --text: #e2e4ea;
+    --text-dim: #8a8fa3;
+    --accent: #6ee7b7;
+    --accent-dim: #2d6a53;
+    --accent2: #f9a858;
+    --danger: #f87171;
+    --purple: #a78bfa;
+    --code-bg: #111318;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .grain {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 1100px; margin: 0 auto; padding: 40px 24px;
+  }
+
+  header { margin-bottom: 48px; border-bottom: 1px solid var(--border); padding-bottom: 32px; }
+
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400; font-size: 2.4rem;
+    color: var(--accent); letter-spacing: -0.02em; margin-bottom: 8px;
+  }
+
+  .subtitle { color: var(--text-dim); font-size: 12px; font-weight: 300; }
+
+  .method-info {
+    margin-top: 16px; padding: 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    font-size: 11.5px; color: var(--text-dim); line-height: 1.7;
+  }
+  .method-info strong { color: var(--accent); font-weight: 500; }
+
+  .panels {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 24px; margin-bottom: 24px;
+  }
+
+  @media (max-width: 768px) { .panels { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px;
+  }
+
+  .panel-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--accent); margin-bottom: 16px; font-weight: 500;
+  }
+
+  label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+
+  textarea {
+    width: 100%; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 11px; padding: 12px; resize: vertical; outline: none;
+    transition: border-color 0.2s; min-height: 160px;
+  }
+  textarea:focus { border-color: var(--accent-dim); }
+
+  .file-input-wrap { position: relative; margin-bottom: 12px; }
+
+  .file-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: var(--surface2);
+    border: 1px dashed var(--border-hi); border-radius: 4px;
+    color: var(--text-dim); font-family: 'DM Mono', monospace;
+    font-size: 11px; cursor: pointer; transition: all 0.2s;
+  }
+  .file-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .file-name { margin-left: 8px; color: var(--accent); font-size: 11px; }
+  .or-divider { text-align: center; color: var(--text-dim); font-size: 10px; margin: 8px 0; opacity: 0.6; }
+
+  .run-btn {
+    display: block; width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--accent-dim), #1a5040);
+    border: 1px solid var(--accent-dim); border-radius: 6px;
+    color: var(--accent); font-family: 'DM Mono', monospace;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.25s; letter-spacing: 0.05em;
+    text-transform: uppercase; margin-bottom: 32px;
+  }
+  .run-btn:hover { background: linear-gradient(135deg, #2d6a53, #226648); transform: translateY(-1px); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  #status {
+    padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 11px; color: var(--text-dim);
+    margin-bottom: 24px; display: none; line-height: 1.8;
+  }
+  #status.visible { display: block; }
+  #status .step { color: var(--accent); }
+  #status .warn { color: var(--accent2); }
+  #status .err { color: var(--danger); }
+
+  .results { display: none; }
+  .results.visible { display: block; }
+
+  .results-header {
+    font-family: 'Instrument Serif', serif; font-size: 1.5rem;
+    color: var(--accent); margin-bottom: 8px;
+  }
+  .results-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 24px; }
+
+  .copy-row { margin-bottom: 24px; display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+  .copy-output {
+    flex: 1; min-width: 200px; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 12px; font-family: 'DM Mono', monospace;
+    font-size: 10.5px; color: var(--text); word-break: break-all;
+    max-height: 60px; overflow-y: auto;
+  }
+  .small-btn {
+    padding: 8px 20px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 11px;
+    cursor: pointer; white-space: nowrap; transition: all 0.2s; color: var(--text-dim);
+  }
+  .small-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .compare-btn { color: var(--purple); border-color: var(--purple); border-style: dashed; }
+  .compare-btn:hover { background: rgba(167,139,250,0.1); color: var(--purple); border-color: var(--purple); }
+
+  /* Accuracy input */
+  .accuracy-input-panel {
+    background: var(--surface); border: 1px solid var(--purple);
+    border-radius: 8px; padding: 24px; margin-bottom: 24px; display: none;
+  }
+  .accuracy-input-panel.visible { display: block; }
+
+  .accuracy-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; margin-bottom: 24px; display: none;
+  }
+  .accuracy-panel.visible { display: block; }
+
+  .accuracy-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--purple); margin-bottom: 16px; font-weight: 500;
+  }
+
+  .accuracy-hero { display: flex; align-items: center; gap: 32px; margin-bottom: 24px; flex-wrap: wrap; }
+
+  .accuracy-score { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
+  .accuracy-score svg { width: 140px; height: 140px; transform: rotate(-90deg); }
+  .accuracy-score .ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+  .accuracy-score .ring-fg { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s ease, stroke 0.3s; }
+  .accuracy-score .score-label {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .accuracy-score .score-pct { font-family: 'Instrument Serif', serif; font-size: 2rem; line-height: 1; }
+  .accuracy-score .score-sub { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+  .accuracy-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-width: 200px; }
+  .metric-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; }
+  .metric-card .metric-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .metric-card .metric-val { font-size: 15px; font-weight: 500; }
+
+  .coord-compare-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+  .coord-compare-table th {
+    text-align: left; color: var(--text-dim); font-weight: 400;
+    padding: 6px 10px 6px 0; border-bottom: 1px solid var(--border);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .coord-compare-table td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .coord-compare-table tr:last-child td { border-bottom: none; }
+  .coord-compare-table .delta-good { color: var(--accent); }
+  .coord-compare-table .delta-ok { color: var(--accent2); }
+  .coord-compare-table .delta-bad { color: var(--danger); }
+
+  .diagnostics { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-top: 24px; }
+  .diag-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent2); margin-bottom: 16px; font-weight: 500; }
+  .diag-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .diag-table th {
+    text-align: left; color: var(--text-dim); font-weight: 400;
+    padding: 6px 12px 6px 0; border-bottom: 1px solid var(--border);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .diag-table td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--border); }
+  .diag-table td.num { font-variant-numeric: tabular-nums; }
+  .diag-table tr:last-child td { border-bottom: none; }
+  .match-good { color: var(--accent); }
+  .match-ok { color: var(--accent2); }
+  .match-bad { color: var(--danger); }
+  .bar-wrap { width: 80px; height: 6px; background: var(--code-bg); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+  .footer-note {
+    margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border);
+    font-size: 10px; color: var(--text-dim); opacity: 0.6; line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="container">
+
+<header>
+  <h1>G25 Coordinate Estimator</h1>
+  <div class="subtitle">Approximate PCA coordinates from known inter-sample distances via weighted multilateration</div>
+  <div class="method-info">
+    <strong>Method:</strong> Given distances from an unknown sample to N reference samples with known G25 coordinates,
+    this tool estimates the unknown sample's position using <strong>inverse-distance-weighted centroid</strong> as an initial
+    guess, then refines via <strong>gradient descent</strong>.
+    When dimension weighting is enabled, a second pass blends per-dimension nearest-neighbor estimates
+    with the multilateration result, then a final constrained polish preserves early-dim accuracy
+    while restoring overall distance fit.
+  </div>
+</header>
+
+<div class="panels">
+  <div class="panel">
+    <div class="panel-title">① G25 Coordinates (CSV)</div>
+    <label>Upload CSV file or paste below</label>
+    <div class="file-input-wrap">
+      <label class="file-btn">📂 Choose CSV file<input type="file" id="csvFile" accept=".csv,.txt"></label>
+      <span class="file-name" id="csvFileName"></span>
+    </div>
+    <div class="or-divider">— or paste —</div>
+    <textarea id="csvText" placeholder="SampleName,coord1,coord2,...,coord25&#10;England_Saxon:XYZ__AD_600__Cov_50%,0.042,0.118,..."></textarea>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">② Distance List</div>
+    <label>Upload distances file or paste below</label>
+    <div class="file-input-wrap">
+      <label class="file-btn">📂 Choose distances file<input type="file" id="distFile" accept=".txt,.csv,.tsv"></label>
+      <span class="file-name" id="distFileName"></span>
+    </div>
+    <div class="or-divider">— or paste —</div>
+    <textarea id="distText" placeholder="Distance to:&#9;SampleName_scaled&#10;0.02418&#9;England_EarlyMedieval.AG:I14534..."></textarea>
+  </div>
+</div>
+
+<div class="panels" style="grid-template-columns:1fr; margin-bottom:24px;">
+  <div class="panel">
+    <div class="panel-title" style="color:var(--accent2);">③ Dimension Weighting</div>
+    <label>Front-load importance on early PCA dimensions. Higher values make Dim 1 & 2 dominate the optimization.</label>
+    <div style="display:flex; align-items:center; gap:16px; margin-top:8px;">
+      <span style="font-size:10px;color:var(--text-dim);white-space:nowrap;">Equal</span>
+      <input type="range" id="weightSlider" min="0" max="100" value="0"
+        style="flex:1;accent-color:var(--accent);cursor:pointer;" oninput="updateWeightPreview()">
+      <span style="font-size:10px;color:var(--text-dim);white-space:nowrap;">Heavy PCA1-2</span>
+    </div>
+    <div id="weightPreview" style="margin-top:10px;font-size:10px;color:var(--text-dim);line-height:1.7;"></div>
+  </div>
+</div>
+
+<button class="run-btn" onclick="runEstimation()">Estimate Coordinates</button>
+
+<div id="status"></div>
+
+<div class="results" id="results">
+  <div class="results-header" id="sampleTitle">Estimated G25 Coordinates</div>
+  <div class="results-sub" id="resultsSub"></div>
+
+  <div class="copy-row">
+    <div class="copy-output" id="copyOutput"></div>
+    <button class="small-btn" onclick="copyResult()">Copy</button>
+    <button class="small-btn compare-btn" onclick="toggleCompareInput()">Compare to Actual</button>
+  </div>
+
+  <div class="accuracy-input-panel" id="accuracyInputPanel">
+    <div class="accuracy-title">Paste Known Coordinates</div>
+    <label>Paste the actual G25 coordinates for the target sample. Format: name,c1,c2,...,c25 — or just 25 comma-separated values.</label>
+    <textarea id="actualText" style="min-height:60px;" placeholder="AimSmall_scaled,0.042,0.118,0.055,...  or just  0.042,0.118,0.055,..."></textarea>
+    <div style="margin-top:12px;">
+      <button class="run-btn" style="margin-bottom:0;max-width:280px;display:inline-block;" onclick="runAccuracyCheck()">Check Accuracy</button>
+    </div>
+  </div>
+
+  <div class="accuracy-panel" id="accuracyPanel">
+    <div class="accuracy-title">Accuracy vs. Known Coordinates</div>
+    <div class="accuracy-hero">
+      <div class="accuracy-score">
+        <svg viewBox="0 0 140 140">
+          <circle class="ring-bg" cx="70" cy="70" r="58"/>
+          <circle class="ring-fg" id="ringFg" cx="70" cy="70" r="58"
+            stroke-dasharray="364.42" stroke-dashoffset="364.42"/>
+        </svg>
+        <div class="score-label">
+          <span class="score-pct" id="scorePct">—</span>
+          <span class="score-sub">Correlation</span>
+        </div>
+      </div>
+      <div class="accuracy-metrics">
+        <div class="metric-card"><div class="metric-label">Pearson R</div><div class="metric-val" id="metricPearson">—</div></div>
+        <div class="metric-card"><div class="metric-label">Euclidean Distance</div><div class="metric-val" id="metricEuclidean">—</div></div>
+        <div class="metric-card"><div class="metric-label">Cosine Similarity</div><div class="metric-val" id="metricCosine">—</div></div>
+        <div class="metric-card"><div class="metric-label">Mean Abs Error / Dim</div><div class="metric-val" id="metricMAE">—</div></div>
+      </div>
+    </div>
+    <details>
+      <summary style="cursor:pointer;font-size:11px;color:var(--text-dim);margin-bottom:12px;">Per-dimension comparison ▸</summary>
+      <table class="coord-compare-table">
+        <thead><tr><th>Dim</th><th>Estimated</th><th>Actual</th><th>Δ</th><th>Δ%</th></tr></thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+    </details>
+  </div>
+
+  <div class="diagnostics">
+    <div class="diag-title">Fit Diagnostics</div>
+    <table class="diag-table">
+      <thead><tr><th>Reference Sample</th><th>Observed Dist</th><th>Fitted Dist</th><th>Error</th><th>Fit</th></tr></thead>
+      <tbody id="diagBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer-note">
+  G25 / Global 25 coordinates are PCA-derived population genetics descriptors.
+  This tool performs geometric interpolation — results are approximations and should not
+  replace proper PCA projection from genotype data.
+</div>
+
+</div>
+
+<script>
+let lastEstimated = null;
+let lastEstDims = 0;
+
+document.getElementById('csvFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) { document.getElementById('csvFileName').textContent = f.name; f.text().then(t => document.getElementById('csvText').value = t); }
+});
+document.getElementById('distFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) { document.getElementById('distFileName').textContent = f.name; f.text().then(t => document.getElementById('distText').value = t); }
+});
+
+function log(msg, cls='') {
+  const el = document.getElementById('status');
+  el.classList.add('visible');
+  el.innerHTML += `<div class="${cls}">${msg}</div>`;
+}
+function clearLog() {
+  const el = document.getElementById('status');
+  el.innerHTML = ''; el.classList.remove('visible');
+}
+
+function parseCSV(text) {
+  const samples = {};
+  for (const line of text.trim().split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const parts = line.split(',');
+    if (parts.length < 2) continue;
+    const name = parts[0].trim();
+    const coords = parts.slice(1).map(Number);
+    if (coords.some(isNaN)) continue;
+    samples[name] = coords;
+  }
+  return samples;
+}
+
+function parseDistances(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const distances = [];
+  let targetName = 'Unknown';
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    if (t.toLowerCase().startsWith('distance to')) {
+      const p = t.split(/\t/);
+      if (p.length > 1) targetName = p[1].trim();
+      continue;
+    }
+    const p = t.split(/\t/);
+    if (p.length >= 2) {
+      const dist = parseFloat(p[0]);
+      const name = p[1].trim();
+      if (!isNaN(dist) && name) distances.push({ name, distance: dist });
+    }
+  }
+  return { targetName, distances };
+}
+
+function euclideanDist(a, b) {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) { const d = a[i]-b[i]; sum += d*d; }
+  return Math.sqrt(sum);
+}
+
+function buildDimWeights(dims, emphasis) {
+  const w = new Array(dims);
+  if (emphasis <= 0) { w.fill(1); return w; }
+  const rate = (emphasis/100) * 0.16;
+  for (let i = 0; i < dims; i++) w[i] = Math.exp(-rate*i);
+  const s = w.reduce((a,b)=>a+b,0);
+  const sc = dims/s;
+  for (let i = 0; i < dims; i++) w[i] *= sc;
+  return w;
+}
+
+function estimateCoordinates(refSamples, dimWeights, emphasis) {
+  const dims = refSamples[0].coords.length;
+
+  // Phase 1: IDW centroid initial guess
+  let coords = new Array(dims).fill(0);
+  let wSum = 0;
+  for (const ref of refSamples) {
+    const w = 1/(ref.distance*ref.distance + 1e-12);
+    wSum += w;
+    for (let d = 0; d < dims; d++) coords[d] += ref.coords[d]*w;
+  }
+  for (let d = 0; d < dims; d++) coords[d] /= wSum;
+
+  // Phase 2: Standard gradient descent multilateration
+  let lr = 0.0001, minLr = 1e-9;
+  let best = [...coords], bestCost = Infinity;
+
+  for (let iter = 0; iter < 3000; iter++) {
+    const grad = new Array(dims).fill(0);
+    let cost = 0;
+    for (const ref of refSamples) {
+      const dist = euclideanDist(coords, ref.coords);
+      const res = dist - ref.distance;
+      cost += res*res;
+      const w = 1/(ref.distance+0.001);
+      if (dist > 1e-10) {
+        for (let d = 0; d < dims; d++)
+          grad[d] += 2*res*(coords[d]-ref.coords[d])/dist * w;
+      }
+    }
+    for (let d = 0; d < dims; d++) coords[d] -= lr*grad[d];
+    if (cost < bestCost) { bestCost=cost; best=[...coords]; lr*=1.05; }
+    else { coords=[...best]; lr*=0.5; if(lr<minLr) break; }
+  }
+  coords = [...best];
+
+  // Phase 3: Dimension-weighted blending (only when emphasis > 0)
+  if (emphasis > 0) {
+    const alpha = (emphasis/100) * 0.7;
+
+    // For each dimension, compute a sharply-weighted nearest-neighbor estimate.
+    // Early dims get a higher power exponent, concentrating on the very closest refs.
+    for (let d = 0; d < dims; d++) {
+      const dw = dimWeights[d];
+      const power = 2 + (dw-1)*1.5;
+      let dimEst = 0, dimW = 0;
+      for (const ref of refSamples) {
+        const w = 1/Math.pow(ref.distance, power);
+        dimEst += ref.coords[d]*w;
+        dimW += w;
+      }
+      dimEst /= dimW;
+
+      // Blend strength proportional to dimension weight
+      const dimAlpha = alpha * (dw / dimWeights[0]);
+      coords[d] = coords[d]*(1-dimAlpha) + dimEst*dimAlpha;
+    }
+
+    // Phase 4: Constrained polish — restore distance fit but protect early dims.
+    // Early dims get a tiny learning rate (resist change), later dims absorb the slack.
+    lr = 0.00003; best = [...coords]; bestCost = Infinity;
+    for (let iter = 0; iter < 2000; iter++) {
+      const grad = new Array(dims).fill(0);
+      let cost = 0;
+      for (const ref of refSamples) {
+        const dist = euclideanDist(coords, ref.coords);
+        const res = dist - ref.distance;
+        cost += res*res;
+        const w = 1/(ref.distance+0.001);
+        if (dist > 1e-10) {
+          for (let d = 0; d < dims; d++)
+            grad[d] += 2*res*(coords[d]-ref.coords[d])/dist * w;
+        }
+      }
+      for (let d = 0; d < dims; d++) {
+        // Inverse dim weight as LR scale: early dims barely move
+        const lrScale = 1/dimWeights[d];
+        coords[d] -= lr*lrScale*grad[d];
+      }
+      if (cost < bestCost) { bestCost=cost; best=[...coords]; lr*=1.03; }
+      else { coords=[...best]; lr*=0.5; if(lr<minLr) break; }
+    }
+    coords = [...best];
+  }
+
+  return coords;
+}
+
+function updateWeightPreview() {
+  const emphasis = parseInt(document.getElementById('weightSlider').value);
+  const weights = buildDimWeights(25, emphasis);
+  const preview = document.getElementById('weightPreview');
+  if (emphasis === 0) {
+    preview.innerHTML = 'All dimensions equally weighted (standard Euclidean).';
+  } else {
+    const top5 = weights.slice(0,5).map(w=>w.toFixed(2));
+    const last5 = weights.slice(20).map(w=>w.toFixed(2));
+    preview.innerHTML = `Dim 1–5 weights: <span style="color:var(--accent)">${top5.join(', ')}</span> · ` +
+      `Dim 21–25: <span style="color:var(--text-dim)">${last5.join(', ')}</span> · ` +
+      `Dim1 is <span style="color:var(--accent2)">${(weights[0]/weights[24]).toFixed(1)}×</span> Dim25`;
+  }
+}
+
+function runEstimation() {
+  clearLog();
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('accuracyPanel').classList.remove('visible');
+  document.getElementById('accuracyInputPanel').classList.remove('visible');
+  lastEstimated = null;
+
+  const csvText = document.getElementById('csvText').value;
+  const distText = document.getElementById('distText').value;
+  if (!csvText.trim() || !distText.trim()) { log('Please provide both the G25 coordinates CSV and the distances file.','err'); return; }
+
+  log('Parsing G25 coordinate database...','step');
+  const allSamples = parseCSV(csvText);
+  log(`Found ${Object.keys(allSamples).length} samples in coordinate database.`);
+
+  log('Parsing distance list...','step');
+  const { targetName, distances } = parseDistances(distText);
+  log(`Target sample: <strong>${targetName}</strong>`);
+  log(`Distance entries: ${distances.length}`);
+
+  log('Matching reference samples...','step');
+  const matched = [], unmatched = [];
+  for (const d of distances) {
+    if (allSamples[d.name]) matched.push({ name: d.name, distance: d.distance, coords: allSamples[d.name] });
+    else unmatched.push(d.name);
+  }
+  log(`Matched: <strong>${matched.length}</strong> / ${distances.length} references found in database.`);
+  if (unmatched.length > 0 && unmatched.length <= 10) log(`Unmatched: ${unmatched.map(n=>n.substring(0,50)).join(', ')}`,'warn');
+  else if (unmatched.length > 10) log(`${unmatched.length} samples not found in coordinate database.`,'warn');
+
+  if (matched.length < 3) { log('Need at least 3 matched reference samples.','err'); return; }
+
+  const dims = matched[0].coords.length;
+  log(`Coordinate dimensions: ${dims}`,'step');
+
+  const emphasis = parseInt(document.getElementById('weightSlider').value);
+  const dimWeights = buildDimWeights(dims, emphasis);
+  if (emphasis > 0) log(`Dimension weighting: emphasis=${emphasis}, Dim1 is ${(dimWeights[0]/dimWeights[dims-1]).toFixed(1)}× Dim${dims}`,'step');
+  else log('Dimension weighting: equal (standard)','step');
+
+  log('Running multilateration optimization...','step');
+  const estimated = estimateCoordinates(matched, dimWeights, emphasis);
+  lastEstimated = estimated;
+  lastEstDims = dims;
+
+  const diagData = matched.map(ref => {
+    const fitted = euclideanDist(estimated, ref.coords);
+    const error = Math.abs(fitted-ref.distance);
+    return { name: ref.name, observed: ref.distance, fitted, error, relError: error/ref.distance };
+  });
+  const avgRelError = diagData.reduce((s,d)=>s+d.relError,0)/diagData.length;
+  log(`Optimization complete. Mean relative error: ${(avgRelError*100).toFixed(1)}%`, avgRelError<0.1?'step':'warn');
+
+  displayResults(targetName, estimated, diagData, dims, matched.length);
+}
+
+function displayResults(name, coords, diagData, dims, matchCount) {
+  const estName = name + '_estimated';
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('sampleTitle').textContent = `Estimated: ${estName}`;
+  document.getElementById('resultsSub').textContent = `Based on ${matchCount} reference samples · ${dims} dimensions`;
+
+  document.getElementById('copyOutput').textContent = estName + ',' + coords.map(v=>v.toFixed(6)).join(',');
+
+  const tbody = document.getElementById('diagBody');
+  tbody.innerHTML = '';
+  diagData.sort((a,b) => a.relError - b.relError);
+  for (const d of diagData) {
+    const tr = document.createElement('tr');
+    const pct = d.relError*100;
+    let cls='match-good', col='var(--accent)';
+    if (pct>20) { cls='match-bad'; col='var(--danger)'; }
+    else if (pct>8) { cls='match-ok'; col='var(--accent2)'; }
+    const barW = Math.min(100, pct*2);
+    const sn = d.name.length>55 ? d.name.substring(0,52)+'...' : d.name;
+    tr.innerHTML = `<td title="${d.name}">${sn}</td><td class="num">${d.observed.toFixed(6)}</td><td class="num">${d.fitted.toFixed(6)}</td><td class="num ${cls}">${d.error.toFixed(6)}</td><td><span class="bar-wrap"><span class="bar-fill" style="width:${100-barW}%;background:${col}"></span></span><span class="${cls}">${pct.toFixed(1)}%</span></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// --- Accuracy comparison ---
+
+function toggleCompareInput() {
+  const panel = document.getElementById('accuracyInputPanel');
+  panel.classList.toggle('visible');
+}
+
+function parseActualCoords(text, expectedDims) {
+  const parts = text.split(',').map(s=>s.trim());
+  let coords = isNaN(parseFloat(parts[0])) ? parts.slice(1).map(Number) : parts.map(Number);
+  if (coords.some(isNaN) || coords.length !== expectedDims) return null;
+  return coords;
+}
+
+function pearsonR(a,b) {
+  const n=a.length; let sA=0,sB=0,sAB=0,sA2=0,sB2=0;
+  for(let i=0;i<n;i++){sA+=a[i];sB+=b[i];sAB+=a[i]*b[i];sA2+=a[i]*a[i];sB2+=b[i]*b[i];}
+  const num=n*sAB-sA*sB, den=Math.sqrt((n*sA2-sA*sA)*(n*sB2-sB*sB));
+  return den===0?0:num/den;
+}
+
+function cosineS(a,b) {
+  let dot=0,mA=0,mB=0;
+  for(let i=0;i<a.length;i++){dot+=a[i]*b[i];mA+=a[i]*a[i];mB+=b[i]*b[i];}
+  const den=Math.sqrt(mA)*Math.sqrt(mB); return den===0?0:dot/den;
+}
+
+function runAccuracyCheck() {
+  if (!lastEstimated) { alert('Run an estimation first.'); return; }
+  const text = document.getElementById('actualText').value.trim();
+  if (!text) { alert('Please paste the actual coordinates.'); return; }
+  const actual = parseActualCoords(text, lastEstDims);
+  if (!actual) { alert(`Could not parse. Expected ${lastEstDims} comma-separated numbers (optionally preceded by name).`); return; }
+  displayAccuracy(lastEstimated, actual);
+}
+
+function displayAccuracy(est, act) {
+  document.getElementById('accuracyPanel').classList.add('visible');
+  const r = pearsonR(est, act);
+  const cos = cosineS(est, act);
+  const dist = euclideanDist(est, act);
+  const dims = est.length;
+  let maeSum=0; for(let i=0;i<dims;i++) maeSum+=Math.abs(est[i]-act[i]);
+  const mae = maeSum/dims;
+  const rPct = r*100;
+
+  const circ = 2*Math.PI*58;
+  const ring = document.getElementById('ringFg');
+  let col = 'var(--accent)';
+  if(rPct<80) col='var(--danger)';
+  else if(rPct<95) col='var(--accent2)';
+  ring.style.stroke = col;
+  ring.style.strokeDashoffset = circ;
+  setTimeout(()=>{ ring.style.strokeDashoffset = circ*(1-Math.max(0,r)); },50);
+
+  const sp = document.getElementById('scorePct');
+  sp.textContent = rPct.toFixed(2)+'%'; sp.style.color = col;
+
+  document.getElementById('metricPearson').textContent = r.toFixed(6);
+  document.getElementById('metricPearson').style.color = col;
+  document.getElementById('metricEuclidean').textContent = dist.toFixed(6);
+  document.getElementById('metricCosine').textContent = (cos*100).toFixed(2)+'%';
+  document.getElementById('metricMAE').textContent = mae.toFixed(6);
+
+  const tbody = document.getElementById('compareBody');
+  tbody.innerHTML = '';
+  for (let i=0;i<dims;i++) {
+    const delta = est[i]-act[i], ad = Math.abs(delta);
+    const pctD = act[i]!==0 ? (ad/Math.abs(act[i]))*100 : 0;
+    let cls='delta-good'; if(ad>0.01) cls='delta-bad'; else if(ad>0.004) cls='delta-ok';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="color:var(--text-dim)">Dim ${i+1}</td><td>${est[i].toFixed(6)}</td><td>${act[i].toFixed(6)}</td><td class="${cls}">${delta>=0?'+':''}${delta.toFixed(6)}</td><td class="${cls}">${act[i]!==0?pctD.toFixed(1)+'%':'—'}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function copyResult() {
+  navigator.clipboard.writeText(document.getElementById('copyOutput').textContent).then(()=>{
+    const btn = document.querySelector('.small-btn:not(.compare-btn)');
+    btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy',1500);
+  });
+}
+</script>
+</body>
+</html>
