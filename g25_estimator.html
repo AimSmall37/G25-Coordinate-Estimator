@@ -390,11 +390,22 @@ function parseDistances(text) {
     const t = line.trim();
     if (!t) continue;
     if (t.toLowerCase().startsWith('distance to')) {
+      // Split on tab first; fall back to colon+whitespace or any whitespace
       const p = t.split(/\t/);
-      if (p.length > 1) targetName = p[1].trim();
+      if (p.length > 1) { targetName = p[1].trim(); }
+      else {
+        const m = t.match(/^distance\s+to\s*:\s*(.+)$/i);
+        if (m) targetName = m[1].trim();
+      }
       continue;
     }
-    const p = t.split(/\t/);
+    // Try tab split first
+    let p = t.split(/\t/);
+    if (p.length < 2) {
+      // Fall back: split on first whitespace run (number + space(s) + name)
+      const m = t.match(/^(\S+)\s+(.+)$/);
+      if (m) p = [m[1], m[2]];
+    }
     if (p.length >= 2) {
       const dist = parseFloat(p[0]);
       const name = p[1].trim();
@@ -681,10 +692,25 @@ function displayAccuracy(est, act) {
 }
 
 function copyResult() {
-  navigator.clipboard.writeText(document.getElementById('copyOutput').textContent).then(()=>{
-    const btn = document.querySelector('.small-btn:not(.compare-btn)');
-    btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy',1500);
-  });
+  const text = document.getElementById('copyOutput').textContent;
+  const btn = document.querySelector('.small-btn:not(.compare-btn)');
+  function onSuccess() { btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy',1500); }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
+  function fallbackCopy() {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); onSuccess(); }
+    catch(e) { btn.textContent='Failed'; setTimeout(()=>btn.textContent='Copy',1500); }
+    document.body.removeChild(ta);
+  }
 }
 </script>
 </body>
