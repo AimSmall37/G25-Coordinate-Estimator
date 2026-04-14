@@ -20,6 +20,7 @@
     --accent2: #f9a858;
     --danger: #f87171;
     --purple: #a78bfa;
+    --blue: #60a5fa;
     --code-bg: #111318;
   }
 
@@ -123,6 +124,7 @@
   #status .step { color: var(--accent); }
   #status .warn { color: var(--accent2); }
   #status .err { color: var(--danger); }
+  #status .info-blue { color: var(--blue); }
 
   .results { display: none; }
   .results.visible { display: block; }
@@ -148,6 +150,69 @@
   .small-btn:hover { border-color: var(--accent); color: var(--accent); }
   .compare-btn { color: var(--purple); border-color: var(--purple); border-style: dashed; }
   .compare-btn:hover { background: rgba(167,139,250,0.1); color: var(--purple); border-color: var(--purple); }
+
+  /* Method selector */
+  .method-selector {
+    display: flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+    margin-top: 12px;
+  }
+  .method-option {
+    flex: 1; padding: 10px 12px; background: var(--code-bg);
+    border: none; border-right: 1px solid var(--border);
+    color: var(--text-dim); font-family: 'DM Mono', monospace;
+    font-size: 11px; cursor: pointer; transition: all 0.2s;
+    text-align: center;
+  }
+  .method-option:last-child { border-right: none; }
+  .method-option:hover { color: var(--text); background: var(--surface2); }
+  .method-option.active { background: var(--accent-dim); color: var(--accent); font-weight: 500; }
+  .method-option.active-blue { background: rgba(96,165,250,0.15); color: var(--blue); font-weight: 500; }
+  .method-option.active-purple { background: rgba(167,139,250,0.15); color: var(--purple); font-weight: 500; }
+  .method-note {
+    margin-top: 10px; font-size: 10px; color: var(--text-dim); line-height: 1.6;
+    min-height: 2.4em;
+  }
+  .method-note .hl-green { color: var(--accent); }
+  .method-note .hl-blue { color: var(--blue); }
+  .method-note .hl-purple { color: var(--purple); }
+  .method-note .hl-warn { color: var(--accent2); }
+
+  /* Both-mode comparison */
+  .comparison-panel {
+    background: var(--surface); border: 1px solid var(--purple);
+    border-radius: 8px; padding: 24px; margin-bottom: 24px; display: none;
+  }
+  .comparison-panel.visible { display: block; }
+  .comparison-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--purple); margin-bottom: 16px; font-weight: 500;
+  }
+  .comp-metrics-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;
+  }
+  @media (max-width: 600px) { .comp-metrics-grid { grid-template-columns: 1fr; } }
+  .comp-method-card {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px;
+  }
+  .comp-method-card .method-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 10px; font-weight: 500;
+  }
+  .comp-method-card .method-label.green { color: var(--accent); }
+  .comp-method-card .method-label.blue { color: var(--blue); }
+  .comp-stat { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; }
+  .comp-stat .stat-label { color: var(--text-dim); }
+  .comp-stat .stat-val { font-variant-numeric: tabular-nums; }
+
+  .comp-dim-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+  .comp-dim-table th {
+    text-align: left; color: var(--text-dim); font-weight: 400;
+    padding: 6px 8px 6px 0; border-bottom: 1px solid var(--border);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .comp-dim-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .comp-dim-table tr:last-child td { border-bottom: none; }
+  .comp-dim-table .winner { font-weight: 500; }
 
   /* Accuracy input */
   .accuracy-input-panel {
@@ -226,45 +291,58 @@
 
 <header>
   <h1>G25 Coordinate Estimator</h1>
-  <div class="subtitle">Approximate PCA coordinates from known inter-sample distances via weighted multilateration</div>
+  <div class="subtitle">Approximate PCA coordinates from known inter-sample distances via direct solve or weighted multilateration</div>
   <div class="method-info">
-    <strong>Method:</strong> Given distances from an unknown sample to N reference samples with known G25 coordinates,
-    this tool estimates the unknown sample's position using <strong>inverse-distance-weighted centroid</strong> as an initial
-    guess, then refines via <strong>gradient descent</strong>.
-    When dimension weighting is enabled, a second pass blends per-dimension nearest-neighbor estimates
-    with the multilateration result, then a final constrained polish preserves early-dim accuracy
-    while restoring overall distance fit.
+    <strong>Two Methods:</strong>
+    With <strong>26+ matched references</strong>, a <strong>Direct Linear Algebra Solver</strong> can compute exact coordinates
+    by expanding the Euclidean distance equations and cancelling squared unknowns via row reduction, yielding a closed-form solution.
+    Alternatively, the <strong>Multilateration</strong> method uses inverse-distance-weighted centroid + gradient descent refinement,
+    and works with any number of references (3+). Use <strong>Both</strong> mode to compare the two approaches side by side.
   </div>
 </header>
 
 <div class="panels">
   <div class="panel">
-    <div class="panel-title">① G25 Coordinates (CSV)</div>
+    <div class="panel-title">&#9312; G25 Coordinates (CSV)</div>
     <label>Upload CSV file or paste below</label>
     <div class="file-input-wrap">
-      <label class="file-btn">📂 Choose CSV file<input type="file" id="csvFile" accept=".csv,.txt"></label>
+      <label class="file-btn">&#128194; Choose CSV file<input type="file" id="csvFile" accept=".csv,.txt"></label>
       <span class="file-name" id="csvFileName"></span>
     </div>
-    <div class="or-divider">— or paste —</div>
+    <div class="or-divider">&mdash; or paste &mdash;</div>
     <textarea id="csvText" placeholder="SampleName,coord1,coord2,...,coord25&#10;England_Saxon:XYZ__AD_600__Cov_50%,0.042,0.118,..."></textarea>
   </div>
 
   <div class="panel">
-    <div class="panel-title">② Distance List</div>
+    <div class="panel-title">&#9313; Distance List</div>
     <label>Upload distances file or paste below</label>
     <div class="file-input-wrap">
-      <label class="file-btn">📂 Choose distances file<input type="file" id="distFile" accept=".txt,.csv,.tsv"></label>
+      <label class="file-btn">&#128194; Choose distances file<input type="file" id="distFile" accept=".txt,.csv,.tsv"></label>
       <span class="file-name" id="distFileName"></span>
     </div>
-    <div class="or-divider">— or paste —</div>
+    <div class="or-divider">&mdash; or paste &mdash;</div>
     <textarea id="distText" placeholder="Distance to:&#9;SampleName_scaled&#10;0.02418&#9;England_EarlyMedieval.AG:I14534..."></textarea>
   </div>
 </div>
 
-<div class="panels" style="grid-template-columns:1fr; margin-bottom:24px;">
+<div class="panels" style="grid-template-columns:1fr 1fr; margin-bottom:24px;">
   <div class="panel">
-    <div class="panel-title" style="color:var(--accent2);">③ Dimension Weighting</div>
-    <label>Front-load importance on early PCA dimensions. Higher values make Dim 1 & 2 dominate the optimization.</label>
+    <div class="panel-title" style="color:var(--blue);">&#9314; Solver Method</div>
+    <label>Choose which estimation method to run.</label>
+    <div class="method-selector" id="methodSelector">
+      <button class="method-option active" data-method="auto" onclick="selectMethod('auto',this)">Auto</button>
+      <button class="method-option" data-method="direct" onclick="selectMethod('direct',this)">Direct Solve</button>
+      <button class="method-option" data-method="multilat" onclick="selectMethod('multilat',this)">Multilateration</button>
+      <button class="method-option" data-method="both" onclick="selectMethod('both',this)">Both</button>
+    </div>
+    <div class="method-note" id="methodNote">
+      <span class="hl-green">Auto:</span> Uses Direct Solve when 26+ references match; falls back to Multilateration otherwise.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title" style="color:var(--accent2);">&#9315; Dimension Weighting <span style="font-size:9px;color:var(--text-dim);text-transform:none;letter-spacing:0;">(multilateration only)</span></div>
+    <label>Front-load importance on early PCA dimensions. Higher values make Dim 1 &amp; 2 dominate the optimization.</label>
     <div style="display:flex; align-items:center; gap:16px; margin-top:8px;">
       <span style="font-size:10px;color:var(--text-dim);white-space:nowrap;">Equal</span>
       <input type="range" id="weightSlider" min="0" max="100" value="0"
@@ -279,6 +357,36 @@
 
 <div id="status"></div>
 
+<!-- Comparison panel for Both mode -->
+<div class="comparison-panel" id="comparisonPanel">
+  <div class="comparison-title">Method Comparison &mdash; Direct Solve vs Multilateration</div>
+  <div class="comp-metrics-grid">
+    <div class="comp-method-card">
+      <div class="method-label blue">Direct Solve (Linear Algebra)</div>
+      <div class="comp-stat"><span class="stat-label">Mean Rel. Dist. Error</span><span class="stat-val" id="compDirectRelErr">&mdash;</span></div>
+      <div class="comp-stat"><span class="stat-label">Max Rel. Dist. Error</span><span class="stat-val" id="compDirectMaxErr">&mdash;</span></div>
+      <div class="comp-stat"><span class="stat-label">RMS Dist. Residual</span><span class="stat-val" id="compDirectRMS">&mdash;</span></div>
+    </div>
+    <div class="comp-method-card">
+      <div class="method-label green">Multilateration (Iterative)</div>
+      <div class="comp-stat"><span class="stat-label">Mean Rel. Dist. Error</span><span class="stat-val" id="compMultiRelErr">&mdash;</span></div>
+      <div class="comp-stat"><span class="stat-label">Max Rel. Dist. Error</span><span class="stat-val" id="compMultiMaxErr">&mdash;</span></div>
+      <div class="comp-stat"><span class="stat-label">RMS Dist. Residual</span><span class="stat-val" id="compMultiRMS">&mdash;</span></div>
+    </div>
+  </div>
+  <div style="margin-bottom:12px;">
+    <div class="comp-stat" style="font-size:12px;"><span class="stat-label" style="color:var(--purple);">Euclidean distance between solutions</span><span class="stat-val" id="compInterDist" style="color:var(--purple);">&mdash;</span></div>
+    <div class="comp-stat" style="font-size:12px;"><span class="stat-label" style="color:var(--purple);">Pearson R between solutions</span><span class="stat-val" id="compInterR" style="color:var(--purple);">&mdash;</span></div>
+  </div>
+  <details>
+    <summary style="cursor:pointer;font-size:11px;color:var(--text-dim);margin-bottom:12px;">Per-dimension comparison &#9656;</summary>
+    <table class="comp-dim-table">
+      <thead><tr><th>Dim</th><th style="color:var(--blue)">Direct</th><th style="color:var(--accent)">Multilat</th><th>&Delta;</th></tr></thead>
+      <tbody id="compDimBody"></tbody>
+    </table>
+  </details>
+</div>
+
 <div class="results" id="results">
   <div class="results-header" id="sampleTitle">Estimated G25 Coordinates</div>
   <div class="results-sub" id="resultsSub"></div>
@@ -291,7 +399,7 @@
 
   <div class="accuracy-input-panel" id="accuracyInputPanel">
     <div class="accuracy-title">Paste Known Coordinates</div>
-    <label>Paste the actual G25 coordinates for the target sample. Format: name,c1,c2,...,c25 — or just 25 comma-separated values.</label>
+    <label>Paste the actual G25 coordinates for the target sample. Format: name,c1,c2,...,c25 &mdash; or just 25 comma-separated values.</label>
     <textarea id="actualText" style="min-height:60px;" placeholder="AimSmall_scaled,0.042,0.118,0.055,...  or just  0.042,0.118,0.055,..."></textarea>
     <div style="margin-top:12px;">
       <button class="run-btn" style="margin-bottom:0;max-width:280px;display:inline-block;" onclick="runAccuracyCheck()">Check Accuracy</button>
@@ -308,21 +416,21 @@
             stroke-dasharray="364.42" stroke-dashoffset="364.42"/>
         </svg>
         <div class="score-label">
-          <span class="score-pct" id="scorePct">—</span>
+          <span class="score-pct" id="scorePct">&mdash;</span>
           <span class="score-sub">Correlation</span>
         </div>
       </div>
       <div class="accuracy-metrics">
-        <div class="metric-card"><div class="metric-label">Pearson R</div><div class="metric-val" id="metricPearson">—</div></div>
-        <div class="metric-card"><div class="metric-label">Euclidean Distance</div><div class="metric-val" id="metricEuclidean">—</div></div>
-        <div class="metric-card"><div class="metric-label">Cosine Similarity</div><div class="metric-val" id="metricCosine">—</div></div>
-        <div class="metric-card"><div class="metric-label">Mean Abs Error / Dim</div><div class="metric-val" id="metricMAE">—</div></div>
+        <div class="metric-card"><div class="metric-label">Pearson R</div><div class="metric-val" id="metricPearson">&mdash;</div></div>
+        <div class="metric-card"><div class="metric-label">Euclidean Distance</div><div class="metric-val" id="metricEuclidean">&mdash;</div></div>
+        <div class="metric-card"><div class="metric-label">Cosine Similarity</div><div class="metric-val" id="metricCosine">&mdash;</div></div>
+        <div class="metric-card"><div class="metric-label">Mean Abs Error / Dim</div><div class="metric-val" id="metricMAE">&mdash;</div></div>
       </div>
     </div>
     <details>
-      <summary style="cursor:pointer;font-size:11px;color:var(--text-dim);margin-bottom:12px;">Per-dimension comparison ▸</summary>
+      <summary style="cursor:pointer;font-size:11px;color:var(--text-dim);margin-bottom:12px;">Per-dimension comparison &#9656;</summary>
       <table class="coord-compare-table">
-        <thead><tr><th>Dim</th><th>Estimated</th><th>Actual</th><th>Δ</th><th>Δ%</th></tr></thead>
+        <thead><tr><th>Dim</th><th>Estimated</th><th>Actual</th><th>&Delta;</th><th>&Delta;%</th></tr></thead>
         <tbody id="compareBody"></tbody>
       </table>
     </details>
@@ -339,8 +447,9 @@
 
 <div class="footer-note">
   G25 / Global 25 coordinates are PCA-derived population genetics descriptors.
-  This tool performs geometric interpolation — results are approximations and should not
+  This tool performs geometric interpolation &mdash; results are approximations and should not
   replace proper PCA projection from genotype data.
+  Direct Solve method based on a contribution by a community member.
 </div>
 
 </div>
@@ -348,6 +457,7 @@
 <script>
 let lastEstimated = null;
 let lastEstDims = 0;
+let currentMethod = 'auto';
 
 document.getElementById('csvFile').addEventListener('change', e => {
   const f = e.target.files[0];
@@ -358,6 +468,28 @@ document.getElementById('distFile').addEventListener('change', e => {
   if (f) { document.getElementById('distFileName').textContent = f.name; f.text().then(t => document.getElementById('distText').value = t); }
 });
 
+// --- Method selector ---
+function selectMethod(method, btn) {
+  currentMethod = method;
+  document.querySelectorAll('.method-option').forEach(b => {
+    b.classList.remove('active','active-blue','active-purple');
+  });
+  if (method === 'auto') btn.classList.add('active');
+  else if (method === 'direct') btn.classList.add('active-blue');
+  else if (method === 'multilat') btn.classList.add('active');
+  else if (method === 'both') btn.classList.add('active-purple');
+
+  const note = document.getElementById('methodNote');
+  const notes = {
+    auto: '<span class="hl-green">Auto:</span> Uses Direct Solve when 26+ references match; falls back to Multilateration otherwise.',
+    direct: '<span class="hl-blue">Direct Solve:</span> Exact linear algebra solution. Requires exactly 26+ matched references. No dimension weighting.',
+    multilat: '<span class="hl-green">Multilateration:</span> Iterative optimization (IDW centroid + gradient descent). Works with 3+ references. Supports dimension weighting.',
+    both: '<span class="hl-purple">Both:</span> Runs both methods and shows a side-by-side comparison. Requires 26+ matched references for Direct Solve.'
+  };
+  note.innerHTML = notes[method];
+}
+
+// --- Logging ---
 function log(msg, cls='') {
   const el = document.getElementById('status');
   el.classList.add('visible');
@@ -368,6 +500,7 @@ function clearLog() {
   el.innerHTML = ''; el.classList.remove('visible');
 }
 
+// --- Parsers ---
 function parseCSV(text) {
   const samples = {};
   for (const line of text.trim().split(/\r?\n/)) {
@@ -390,7 +523,6 @@ function parseDistances(text) {
     const t = line.trim();
     if (!t) continue;
     if (t.toLowerCase().startsWith('distance to')) {
-      // Split on tab first; fall back to colon+whitespace or any whitespace
       const p = t.split(/\t/);
       if (p.length > 1) { targetName = p[1].trim(); }
       else {
@@ -399,10 +531,8 @@ function parseDistances(text) {
       }
       continue;
     }
-    // Try tab split first
     let p = t.split(/\t/);
     if (p.length < 2) {
-      // Fall back: split on first whitespace run (number + space(s) + name)
       const m = t.match(/^(\S+)\s+(.+)$/);
       if (m) p = [m[1], m[2]];
     }
@@ -415,10 +545,24 @@ function parseDistances(text) {
   return { targetName, distances };
 }
 
+// --- Math utilities ---
 function euclideanDist(a, b) {
   let sum = 0;
   for (let i = 0; i < a.length; i++) { const d = a[i]-b[i]; sum += d*d; }
   return Math.sqrt(sum);
+}
+
+function pearsonR(a,b) {
+  const n=a.length; let sA=0,sB=0,sAB=0,sA2=0,sB2=0;
+  for(let i=0;i<n;i++){sA+=a[i];sB+=b[i];sAB+=a[i]*b[i];sA2+=a[i]*a[i];sB2+=b[i]*b[i];}
+  const num=n*sAB-sA*sB, den=Math.sqrt((n*sA2-sA*sA)*(n*sB2-sB*sB));
+  return den===0?0:num/den;
+}
+
+function cosineS(a,b) {
+  let dot=0,mA=0,mB=0;
+  for(let i=0;i<a.length;i++){dot+=a[i]*b[i];mA+=a[i]*a[i];mB+=b[i]*b[i];}
+  const den=Math.sqrt(mA)*Math.sqrt(mB); return den===0?0:dot/den;
 }
 
 function buildDimWeights(dims, emphasis) {
@@ -432,7 +576,137 @@ function buildDimWeights(dims, emphasis) {
   return w;
 }
 
-function estimateCoordinates(refSamples, dimWeights, emphasis) {
+// =====================================================
+// DIRECT LINEAR ALGEBRA SOLVER
+// =====================================================
+// Ported from the Python contribution.
+// Given N >= dims+1 matched references (26 for G25),
+// expands d² = sum((xi - PCi)²) for each reference,
+// subtracts row 0 from rows 1..dims to cancel x²
+// terms, yielding a dims×dims linear system.
+// When N > dims+1, uses least-squares for overdetermined system.
+
+function directSolve(matched, dims) {
+  const N = matched.length;
+  const needed = dims + 1; // 26 for G25
+
+  if (N < needed) return null;
+
+  // Build matrix: each row = [sum_of_squares, coef_1, ..., coef_dims]
+  // where sum_of_squares = PC1² + ... + PCdims² - dist²
+  // and coef_i = -2 * PCi
+  const rows = [];
+  for (let r = 0; r < N; r++) {
+    const ref = matched[r];
+    const coords = ref.coords;
+    const d = ref.distance;
+    let sos = 0;
+    for (let j = 0; j < dims; j++) sos += coords[j] * coords[j];
+    sos -= d * d;
+    const row = [sos];
+    for (let j = 0; j < dims; j++) row.push(-2 * coords[j]);
+    rows.push(row);
+  }
+
+  // Row reduction: subtract row 0 from all others to cancel x² terms
+  for (let r = 1; r < N; r++) {
+    for (let c = 0; c <= dims; c++) {
+      rows[r][c] -= rows[0][c];
+    }
+  }
+
+  // Extract coefficient matrix A and vector b from rows 1..N-1
+  // A[i][j] = rows[i+1][j+1], b[i] = -rows[i+1][0]
+  const numEqs = N - 1;
+  const A = [];
+  const b = [];
+  for (let i = 0; i < numEqs; i++) {
+    const aRow = [];
+    for (let j = 0; j < dims; j++) aRow.push(rows[i + 1][j + 1]);
+    A.push(aRow);
+    b.push(-rows[i + 1][0]);
+  }
+
+  if (numEqs === dims) {
+    // Exact system: solve Ax = b via Gaussian elimination with partial pivoting
+    return gaussianSolve(A, b, dims);
+  } else {
+    // Overdetermined: solve via normal equations A^T A x = A^T b
+    return leastSquaresSolve(A, b, dims, numEqs);
+  }
+}
+
+function gaussianSolve(A, b, n) {
+  // Augmented matrix
+  const aug = [];
+  for (let i = 0; i < n; i++) {
+    aug.push([...A[i], b[i]]);
+  }
+
+  // Forward elimination with partial pivoting
+  for (let col = 0; col < n; col++) {
+    // Find pivot
+    let maxVal = Math.abs(aug[col][col]);
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(aug[row][col]) > maxVal) {
+        maxVal = Math.abs(aug[row][col]);
+        maxRow = row;
+      }
+    }
+    if (maxVal < 1e-15) return null; // singular
+
+    // Swap rows
+    if (maxRow !== col) {
+      [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+    }
+
+    // Eliminate below
+    for (let row = col + 1; row < n; row++) {
+      const factor = aug[row][col] / aug[col][col];
+      for (let j = col; j <= n; j++) {
+        aug[row][j] -= factor * aug[col][j];
+      }
+    }
+  }
+
+  // Back substitution
+  const x = new Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    let sum = aug[i][n];
+    for (let j = i + 1; j < n; j++) sum -= aug[i][j] * x[j];
+    if (Math.abs(aug[i][i]) < 1e-15) return null;
+    x[i] = sum / aug[i][i];
+  }
+  return x;
+}
+
+function leastSquaresSolve(A, b, dims, numEqs) {
+  // Compute A^T * A (dims x dims) and A^T * b (dims)
+  const AtA = [];
+  const Atb = [];
+  for (let i = 0; i < dims; i++) {
+    AtA.push(new Array(dims).fill(0));
+    Atb.push(0);
+  }
+  for (let i = 0; i < dims; i++) {
+    for (let j = 0; j < dims; j++) {
+      let sum = 0;
+      for (let k = 0; k < numEqs; k++) sum += A[k][i] * A[k][j];
+      AtA[i][j] = sum;
+    }
+    let sum = 0;
+    for (let k = 0; k < numEqs; k++) sum += A[k][i] * b[k];
+    Atb[i] = sum;
+  }
+  return gaussianSolve(AtA, Atb, dims);
+}
+
+// =====================================================
+// MULTILATERATION SOLVER (existing iterative approach)
+// =====================================================
+
+function estimateCoordinatesMultilat(refSamples, dimWeights, emphasis) {
   const dims = refSamples[0].coords.length;
 
   // Phase 1: IDW centroid initial guess
@@ -472,8 +746,6 @@ function estimateCoordinates(refSamples, dimWeights, emphasis) {
   if (emphasis > 0) {
     const alpha = (emphasis/100) * 0.7;
 
-    // For each dimension, compute a sharply-weighted nearest-neighbor estimate.
-    // Early dims get a higher power exponent, concentrating on the very closest refs.
     for (let d = 0; d < dims; d++) {
       const dw = dimWeights[d];
       const power = 2 + (dw-1)*1.5;
@@ -484,14 +756,11 @@ function estimateCoordinates(refSamples, dimWeights, emphasis) {
         dimW += w;
       }
       dimEst /= dimW;
-
-      // Blend strength proportional to dimension weight
       const dimAlpha = alpha * (dw / dimWeights[0]);
       coords[d] = coords[d]*(1-dimAlpha) + dimEst*dimAlpha;
     }
 
-    // Phase 4: Constrained polish — restore distance fit but protect early dims.
-    // Early dims get a tiny learning rate (resist change), later dims absorb the slack.
+    // Phase 4: Constrained polish
     lr = 0.00003; best = [...coords]; bestCost = Infinity;
     for (let iter = 0; iter < 2000; iter++) {
       const grad = new Array(dims).fill(0);
@@ -507,7 +776,6 @@ function estimateCoordinates(refSamples, dimWeights, emphasis) {
         }
       }
       for (let d = 0; d < dims; d++) {
-        // Inverse dim weight as LR scale: early dims barely move
         const lrScale = 1/dimWeights[d];
         coords[d] -= lr*lrScale*grad[d];
       }
@@ -520,26 +788,28 @@ function estimateCoordinates(refSamples, dimWeights, emphasis) {
   return coords;
 }
 
-function updateWeightPreview() {
-  const emphasis = parseInt(document.getElementById('weightSlider').value);
-  const weights = buildDimWeights(25, emphasis);
-  const preview = document.getElementById('weightPreview');
-  if (emphasis === 0) {
-    preview.innerHTML = 'All dimensions equally weighted (standard Euclidean).';
-  } else {
-    const top5 = weights.slice(0,5).map(w=>w.toFixed(2));
-    const last5 = weights.slice(20).map(w=>w.toFixed(2));
-    preview.innerHTML = `Dim 1–5 weights: <span style="color:var(--accent)">${top5.join(', ')}</span> · ` +
-      `Dim 21–25: <span style="color:var(--text-dim)">${last5.join(', ')}</span> · ` +
-      `Dim1 is <span style="color:var(--accent2)">${(weights[0]/weights[24]).toFixed(1)}×</span> Dim25`;
-  }
+// =====================================================
+// Diagnostics helper
+// =====================================================
+
+function computeDiagnostics(estimated, matched) {
+  return matched.map(ref => {
+    const fitted = euclideanDist(estimated, ref.coords);
+    const error = Math.abs(fitted - ref.distance);
+    return { name: ref.name, observed: ref.distance, fitted, error, relError: error / ref.distance };
+  });
 }
+
+// =====================================================
+// Main estimation entry point
+// =====================================================
 
 function runEstimation() {
   clearLog();
   document.getElementById('results').classList.remove('visible');
   document.getElementById('accuracyPanel').classList.remove('visible');
   document.getElementById('accuracyInputPanel').classList.remove('visible');
+  document.getElementById('comparisonPanel').classList.remove('visible');
   lastEstimated = null;
 
   const csvText = document.getElementById('csvText').value;
@@ -570,32 +840,150 @@ function runEstimation() {
   const dims = matched[0].coords.length;
   log(`Coordinate dimensions: ${dims}`,'step');
 
+  const needed = dims + 1;
+  const canDirect = matched.length >= needed;
+
+  // Resolve effective method
+  let method = currentMethod;
+  if (method === 'auto') {
+    method = canDirect ? 'direct' : 'multilat';
+    log(`Auto-selected: <strong>${canDirect ? 'Direct Solve' : 'Multilateration'}</strong> (${matched.length} matched, need ${needed} for direct).`, 'info-blue');
+  }
+
+  if ((method === 'direct' || method === 'both') && !canDirect) {
+    if (method === 'direct') {
+      log(`Direct Solve requires at least ${needed} matched references (have ${matched.length}). Falling back to Multilateration.`, 'warn');
+      method = 'multilat';
+    } else {
+      log(`Both mode: Direct Solve requires at least ${needed} matched references (have ${matched.length}). Running Multilateration only.`, 'warn');
+      method = 'multilat';
+    }
+  }
+
   const emphasis = parseInt(document.getElementById('weightSlider').value);
   const dimWeights = buildDimWeights(dims, emphasis);
-  if (emphasis > 0) log(`Dimension weighting: emphasis=${emphasis}, Dim1 is ${(dimWeights[0]/dimWeights[dims-1]).toFixed(1)}× Dim${dims}`,'step');
-  else log('Dimension weighting: equal (standard)','step');
 
-  log('Running multilateration optimization...','step');
-  const estimated = estimateCoordinates(matched, dimWeights, emphasis);
+  let estimated = null;
+  let directResult = null;
+  let multiResult = null;
+
+  if (method === 'direct') {
+    log(`Running Direct Linear Algebra Solver (${matched.length} references, ${dims} unknowns)...`, 'info-blue');
+    directResult = directSolve(matched, dims);
+    if (!directResult) {
+      log('Direct Solve failed (singular or ill-conditioned matrix). Falling back to Multilateration.', 'warn');
+      method = 'multilat';
+    } else {
+      estimated = directResult;
+      if (matched.length > needed) {
+        log(`Overdetermined system (${matched.length} > ${needed}): using least-squares fit.`, 'info-blue');
+      }
+      log('Direct Solve complete.', 'step');
+    }
+  }
+
+  if (method === 'multilat') {
+    if (emphasis > 0) log(`Dimension weighting: emphasis=${emphasis}, Dim1 is ${(dimWeights[0]/dimWeights[dims-1]).toFixed(1)}× Dim${dims}`, 'step');
+    else log('Dimension weighting: equal (standard)', 'step');
+    log('Running multilateration optimization...', 'step');
+    multiResult = estimateCoordinatesMultilat(matched, dimWeights, emphasis);
+    estimated = multiResult;
+    log('Multilateration complete.', 'step');
+  }
+
+  if (method === 'both') {
+    log(`Running Direct Linear Algebra Solver (${matched.length} references)...`, 'info-blue');
+    directResult = directSolve(matched, dims);
+    if (!directResult) {
+      log('Direct Solve failed (singular matrix). Showing Multilateration only.', 'warn');
+    } else {
+      if (matched.length > needed) {
+        log(`Overdetermined system (${matched.length} > ${needed}): using least-squares fit.`, 'info-blue');
+      }
+      log('Direct Solve complete.', 'step');
+    }
+
+    if (emphasis > 0) log(`Dimension weighting: emphasis=${emphasis}`, 'step');
+    log('Running multilateration optimization...', 'step');
+    multiResult = estimateCoordinatesMultilat(matched, dimWeights, emphasis);
+    log('Multilateration complete.', 'step');
+
+    // Primary result: use direct if available, else multi
+    estimated = directResult || multiResult;
+
+    // Show comparison panel if both succeeded
+    if (directResult && multiResult) {
+      displayComparison(directResult, multiResult, matched, dims);
+    }
+  }
+
+  if (!estimated) { log('Estimation failed.', 'err'); return; }
+
   lastEstimated = estimated;
   lastEstDims = dims;
 
-  const diagData = matched.map(ref => {
-    const fitted = euclideanDist(estimated, ref.coords);
-    const error = Math.abs(fitted-ref.distance);
-    return { name: ref.name, observed: ref.distance, fitted, error, relError: error/ref.distance };
-  });
-  const avgRelError = diagData.reduce((s,d)=>s+d.relError,0)/diagData.length;
-  log(`Optimization complete. Mean relative error: ${(avgRelError*100).toFixed(1)}%`, avgRelError<0.1?'step':'warn');
+  const diagData = computeDiagnostics(estimated, matched);
+  const avgRelError = diagData.reduce((s,d) => s + d.relError, 0) / diagData.length;
+  const methodLabel = (method === 'both') ? (directResult ? 'Direct Solve' : 'Multilateration') : (method === 'direct' ? 'Direct Solve' : 'Multilateration');
+  log(`Primary result (${methodLabel}): mean relative distance error ${(avgRelError*100).toFixed(2)}%`, avgRelError < 0.1 ? 'step' : 'warn');
 
-  displayResults(targetName, estimated, diagData, dims, matched.length);
+  displayResults(targetName, estimated, diagData, dims, matched.length, methodLabel);
 }
 
-function displayResults(name, coords, diagData, dims, matchCount) {
+// =====================================================
+// Display comparison between methods
+// =====================================================
+
+function displayComparison(direct, multi, matched, dims) {
+  document.getElementById('comparisonPanel').classList.add('visible');
+
+  const dDiag = computeDiagnostics(direct, matched);
+  const mDiag = computeDiagnostics(multi, matched);
+
+  const dAvgRel = dDiag.reduce((s,d)=>s+d.relError,0)/dDiag.length;
+  const mAvgRel = mDiag.reduce((s,d)=>s+d.relError,0)/mDiag.length;
+  const dMaxRel = Math.max(...dDiag.map(d=>d.relError));
+  const mMaxRel = Math.max(...mDiag.map(d=>d.relError));
+  const dRMS = Math.sqrt(dDiag.reduce((s,d)=>s+d.error*d.error,0)/dDiag.length);
+  const mRMS = Math.sqrt(mDiag.reduce((s,d)=>s+d.error*d.error,0)/mDiag.length);
+
+  const colorBetter = (a,b) => a <= b ? 'color:var(--accent)' : 'color:var(--text-dim)';
+
+  document.getElementById('compDirectRelErr').innerHTML = `<span style="${colorBetter(dAvgRel,mAvgRel)}">${(dAvgRel*100).toFixed(2)}%</span>`;
+  document.getElementById('compDirectMaxErr').innerHTML = `<span style="${colorBetter(dMaxRel,mMaxRel)}">${(dMaxRel*100).toFixed(2)}%</span>`;
+  document.getElementById('compDirectRMS').innerHTML = `<span style="${colorBetter(dRMS,mRMS)}">${dRMS.toFixed(6)}</span>`;
+  document.getElementById('compMultiRelErr').innerHTML = `<span style="${colorBetter(mAvgRel,dAvgRel)}">${(mAvgRel*100).toFixed(2)}%</span>`;
+  document.getElementById('compMultiMaxErr').innerHTML = `<span style="${colorBetter(mMaxRel,dMaxRel)}">${(mMaxRel*100).toFixed(2)}%</span>`;
+  document.getElementById('compMultiRMS').innerHTML = `<span style="${colorBetter(mRMS,dRMS)}">${mRMS.toFixed(6)}</span>`;
+
+  const interDist = euclideanDist(direct, multi);
+  const interR = pearsonR(direct, multi);
+  document.getElementById('compInterDist').textContent = interDist.toFixed(6);
+  document.getElementById('compInterR').textContent = (interR * 100).toFixed(4) + '%';
+
+  // Per-dimension table
+  const tbody = document.getElementById('compDimBody');
+  tbody.innerHTML = '';
+  for (let i = 0; i < dims; i++) {
+    const delta = direct[i] - multi[i];
+    const ad = Math.abs(delta);
+    let cls = ''; if (ad > 0.01) cls = 'style="color:var(--danger)"';
+    else if (ad > 0.004) cls = 'style="color:var(--accent2)"';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td style="color:var(--text-dim)">Dim ${i+1}</td><td style="color:var(--blue)">${direct[i].toFixed(6)}</td><td style="color:var(--accent)">${multi[i].toFixed(6)}</td><td ${cls}>${delta>=0?'+':''}${delta.toFixed(6)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// =====================================================
+// Display results
+// =====================================================
+
+function displayResults(name, coords, diagData, dims, matchCount, methodLabel) {
   const estName = name + '_estimated';
   document.getElementById('results').classList.add('visible');
   document.getElementById('sampleTitle').textContent = `Estimated: ${estName}`;
-  document.getElementById('resultsSub').textContent = `Based on ${matchCount} reference samples · ${dims} dimensions`;
+  document.getElementById('resultsSub').textContent = `${methodLabel} · ${matchCount} reference samples · ${dims} dimensions`;
 
   document.getElementById('copyOutput').textContent = estName + ',' + coords.map(v=>v.toFixed(6)).join(',');
 
@@ -615,8 +1003,23 @@ function displayResults(name, coords, diagData, dims, matchCount) {
   }
 }
 
-// --- Accuracy comparison ---
+// --- Weight preview ---
+function updateWeightPreview() {
+  const emphasis = parseInt(document.getElementById('weightSlider').value);
+  const weights = buildDimWeights(25, emphasis);
+  const preview = document.getElementById('weightPreview');
+  if (emphasis === 0) {
+    preview.innerHTML = 'All dimensions equally weighted (standard Euclidean).';
+  } else {
+    const top5 = weights.slice(0,5).map(w=>w.toFixed(2));
+    const last5 = weights.slice(20).map(w=>w.toFixed(2));
+    preview.innerHTML = `Dim 1–5 weights: <span style="color:var(--accent)">${top5.join(', ')}</span> · ` +
+      `Dim 21–25: <span style="color:var(--text-dim)">${last5.join(', ')}</span> · ` +
+      `Dim1 is <span style="color:var(--accent2)">${(weights[0]/weights[24]).toFixed(1)}×</span> Dim25`;
+  }
+}
 
+// --- Accuracy comparison ---
 function toggleCompareInput() {
   const panel = document.getElementById('accuracyInputPanel');
   panel.classList.toggle('visible');
@@ -627,19 +1030,6 @@ function parseActualCoords(text, expectedDims) {
   let coords = isNaN(parseFloat(parts[0])) ? parts.slice(1).map(Number) : parts.map(Number);
   if (coords.some(isNaN) || coords.length !== expectedDims) return null;
   return coords;
-}
-
-function pearsonR(a,b) {
-  const n=a.length; let sA=0,sB=0,sAB=0,sA2=0,sB2=0;
-  for(let i=0;i<n;i++){sA+=a[i];sB+=b[i];sAB+=a[i]*b[i];sA2+=a[i]*a[i];sB2+=b[i]*b[i];}
-  const num=n*sAB-sA*sB, den=Math.sqrt((n*sA2-sA*sA)*(n*sB2-sB*sB));
-  return den===0?0:num/den;
-}
-
-function cosineS(a,b) {
-  let dot=0,mA=0,mB=0;
-  for(let i=0;i<a.length;i++){dot+=a[i]*b[i];mA+=a[i]*a[i];mB+=b[i]*b[i];}
-  const den=Math.sqrt(mA)*Math.sqrt(mB); return den===0?0:dot/den;
 }
 
 function runAccuracyCheck() {
