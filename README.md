@@ -8,9 +8,45 @@ In autosomal DNA and population genetics, **PCA-based coordinate systems** like 
 
 Tools like [Vahaduo](https://vahaduo.github.io/vahaduo/) allow users to compute distances between a target sample and a set of reference populations. The **Distance tab** in Vahaduo outputs a ranked list of these distances. This project asks a reverse question: *if you know how far a sample is from many known reference points, can you reconstruct where it sits in G25 space?*
 
-The answer is yes — and with 25 well-chosen reference samples, the tool achieves **>99.9% Pearson correlation** with the true coordinates.
+The answer is yes. If you have ***at least 26 reference samples***, our estimator returns the coordinates with 100% accuracy through a system of equations that can be reduced to a linear algebra problem. However, even with 25 well-chosen reference samples, the tool still achieves **>99.9% Pearson correlation** with the true coordinates.
 
 ## How It Works
+
+### Method 1: Direct Linear Algebra Solver (works with $\geq 26$ reference samples)
+
+The distances between two sets of G25 coordinates (denoted REF1 and REF2) are measured using the Euclidean distance ($e$). 
+
+$e = \sqrt{(x_{1_{REF1}} - x_{1_{REF2}})^{2} + ... + (x_{25_{REF1}} - x_{25_{REF2}})^{2}}$
+
+Suppose we want to solve an unknown coordinate set $(x_{1}, ... , x_{25})$ when we have the known distances and coordinates for 26 populations (denoted as A-Z). 
+
+Now, we have a ***system of equations***: 
+
+$e_{A} = \sqrt{(x_{1} - x_{1_{A}})^{2}+ ... + (x_{25} - x_{25_{A}})^{2}} \implies {e_{A}^{2} = (x_{1} - x_{1_{A}})^{2}+ ... + (x_{25} - x_{25_{A}})^{2}} \implies e_{A}^{2} = x_{1}^{2} - 2x_{1}x_{1_{A}} + x_{1_{A}}^{2} + ... x_{25}^{2} - 2x_{25}x_{25_{A}} + x_{25_{A}}^{2}$
+
+$e_{B} = \sqrt{(x_{1} - x_{1_{B}})^{2}+ ... + (x_{25} - x_{25_{B}})^{2}} \implies {e_{B}^{2} = (x_{1} - x_{1_{B}})^{2}+ ... + (x_{25} - x_{25_{B}})^{2}} \implies e_{B}^{2} = x_{1}^{2} - 2x_{1}x_{1_{B}} + x_{1_{B}}^{2} + ... x_{25}^{2} - 2x_{25}x_{25_{B}} + x_{25_{B}}^{2}$ 
+
+$\vdots$  
+
+$e_{Z} = \sqrt{(x_{1} - x_{1_{Z}}+ ... + (x_{25} - x_{25_{Z}})^{2}} \implies {e_{1}^{2} = (x_{1} - x_{1_{Z}})^{2}+ ... + (x_{25} - x_{25_{Z}})^{2}} \implies e_{Z}^{2} = x_{1}^{2} - 2x_{1}x_{1_{Z}} + x_{1_{Z}}^{2} + ... x_{25}^{2} - 2x_{25}x_{25_{Z}} + x_{25_{Z}}^{2}$
+
+***Grouping together the terms by order (constants = higher-order terms + coefficients) gives us***
+
+$e_{A}^{2} - (x_{1_{A}}^{2} + ... + x_{25_{A}}^{2}) = (x_{1}^{2} + ... + x_{25}^{2}) + (2x_{1}x_{1_{A}} + ... + 2x_{25}x_{25_{A}})$
+
+$e_{B}^{2} - (x_{1_{B}}^{2} + ... + x_{25_{B}}^{2}) = (x_{1}^{2} + ... + x_{25}^{2}) + (2x_{1}x_{1_{B}} + ... + 2x_{25}x_{25_{B}})$
+
+$\vdots$
+
+$e_{Z}^{2} - (x_{1_{Z}}^{2} + ... + x_{25_{Z}}^{2}) = (x_{1}^{2} + ... + x_{25}^{2}) + (2x_{1}x_{1_{Z}} + ... + 2x_{25}x_{25_{Z}})$
+
+Choose a row $i \in (1, 26)$. Then for all rows $r \in (1, 26) \setminus {i}$, let $R_{r} \leftarrow -R{i} + R_{r}$
+
+Then we have a solvable linear algebra matrix in the form $Ax = b$, with all of the higher order terms cancelled out, $A$ corresponds to the coefficients, and $b$ corresponds to the constants. 
+
+Regardless of which references you choose, you will always get the exact coordinate set. However, you may not always have 26 references available. In this case, the estimator switches to the **multilateration mode**. 
+
+### Method 2: Multilateration Mode (works with $\geq 3$ reference samples)
 
 The estimation runs in four phases:
 
