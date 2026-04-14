@@ -12,6 +12,7 @@ The answer is yes. If you have ***at least 26 reference samples***, our estimato
 
 ## Method 1: Direct Linear Algebra Solver (works with $\geq 26$ reference samples)
 
+### Mathematical Overview 
 The distances between two sets of G25 coordinates (denoted REF1 and REF2) are measured using the Euclidean distance ($e$). 
 
 $e = \sqrt{(x_{1_{REF1}} - x_{1_{REF2}})^{2} + ... + (x_{25_{REF1}} - x_{25_{REF2}})^{2}}$
