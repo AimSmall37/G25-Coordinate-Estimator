@@ -10,9 +10,7 @@ Tools like [Vahaduo](https://vahaduo.github.io/vahaduo/) allow users to compute 
 
 The answer is yes. If you have ***at least 26 reference samples***, our estimator returns the coordinates with 100% accuracy through a system of equations that can be reduced to a linear algebra problem. However, even with 25 well-chosen reference samples, the tool still achieves **>99.9% Pearson correlation** with the true coordinates.
 
-## How It Works
-
-### Method 1: Direct Linear Algebra Solver (works with $\geq 26$ reference samples)
+## Method 1: Direct Linear Algebra Solver (works with $\geq 26$ reference samples)
 
 The distances between two sets of G25 coordinates (denoted REF1 and REF2) are measured using the Euclidean distance ($e$). 
 
@@ -46,7 +44,7 @@ Then we have a solvable linear algebra matrix in the form $Ax = b$, with all of 
 
 Regardless of which references you choose, you will always get the exact coordinate set. However, you may not always have 26 references available. In this case, the estimator switches to the **multilateration mode**. 
 
-### Method 2: Multilateration Mode (works with $\geq 3$ reference samples)
+## Method 2: Multilateration Mode (works with $\geq 3$ reference samples)
 
 The estimation runs in four phases:
 
