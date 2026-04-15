@@ -92,11 +92,11 @@ Distance to:	AimSmall_scaled
 
 Sample names must match exactly between the distance file and the coordinate CSV. The tool reports how many references were successfully matched and lists any that were not found.
 
-**Minimum requirement:** 3 matched reference samples, though accuracy improves significantly with more. 20–30 close references typically yield excellent results.
+**Minimum requirement:** 3 matched reference samples, though accuracy improves significantly with more. 20–30 close references in multilateration mode typically yield excellent results, and 26+ references (regardless of distance) yield exact results in the direct linear algebra mode.
 
 ### ③ Dimension Weighting Slider
 
-Controls how aggressively the optimizer favors early PCA dimensions over later ones.
+Controls how aggressively the optimizer favors early PCA dimensions over later ones. **This feature is relevant only for the multilateration mode.**
 
 | Setting | Behavior |
 |---------|----------|
