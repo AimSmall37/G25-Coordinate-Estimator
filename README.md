@@ -43,7 +43,9 @@ Choose a row $i \in (1, 26)$. Then for all rows $r \in (1, 26) \setminus {i}$, l
 
 Then we have a solvable linear algebra matrix in the form $Ax = b$, with all of the higher order terms cancelled out, $A$ corresponds to the coefficients, and $b$ corresponds to the constants. 
 
-Regardless of which references you choose, you will always get the exact coordinate set. However, you may not always have 26 references available. In this case, the estimator switches to the **multilateration mode**. 
+Regardless of which references you choose, you will always get the exact coordinate set with perfect accuracy (see the [Accuracy Comparison](https://github.com/AimSmall37/G25-Coordinate-Estimator?tab=readme-ov-file#accuracy-comparison) section for information on the accuracy metrics used).  
+
+This is the default mode when you have 26+ references, but the estimator switches to the **multilateration mode** if you have fewer references. 
 
 ## Method 2: Multilateration Mode (works with $\geq 3$ reference samples)
 
