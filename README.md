@@ -39,7 +39,7 @@ $\vdots$
 
 $e_{Z}^{2} - (x_{1_{Z}}^{2} + ... + x_{25_{Z}}^{2}) = (x_{1}^{2} + ... + x_{25}^{2}) + (2x_{1}x_{1_{Z}} + ... + 2x_{25}x_{25_{Z}})$
 
-Choose a row $i \in (1, 26)$. Then for all rows $r \in (1, 26) \setminus {i}$, let $R_{r} \leftarrow -R{i} + R_{r}$
+Choose a row $i \in (1, 26)$. Then for all rows $r \in (1, 26) \setminus {i}$, let $R_{r} \leftarrow -R_{i} + R_{r}$
 
 Then we have a solvable linear algebra matrix in the form $Ax = b$, with all of the higher order terms cancelled out, $A$ corresponds to the coefficients, and $b$ corresponds to the constants. 
 
