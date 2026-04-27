@@ -12,6 +12,8 @@ The answer is yes. If you have ***at least 26 reference samples***, our estimato
 
 ## Method 1: Direct Linear Algebra Solver (works with $\geq 26$ reference samples)
 
+### [Link to Python Implementation](https://github.com/AimSmall37/G25-Coordinate-Estimator/tree/main/python_implementation)
+
 ### Mathematical Overview 
 The distances between two sets of G25 coordinates (denoted REF1 and REF2) are measured using the Euclidean distance ($e$). 
 
